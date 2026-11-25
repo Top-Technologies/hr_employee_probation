@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_probation_inherit" model="ir.ui.view">
+        <field name="name">hr.employee.form.probation.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="priority">40</field>
+        <field name="arch" type="xml">
+            <!-- Header buttons for GM Approval of Contract Employees -->
+            <xpath expr="//header" position="inside">
+                <button name="action_submit_for_gm_approval" string="Submit for GM Approval" type="object"
+                        class="btn-primary" invisible="not is_contract_employee or hiring_approval_state != 'draft'"/>
+                <button name="action_gm_approve_hiring" string="GM Approve Hiring" type="object"
+                        class="btn-success" invisible="not is_contract_employee or hiring_approval_state != 'waiting_gm'"/>
+                <button name="action_gm_reject_hiring" string="GM Reject Hiring" type="object"
+                        class="btn-outline-danger" invisible="not is_contract_employee or hiring_approval_state != 'waiting_gm'"/>
+                <button name="action_reset_hiring_draft" string="Reset to Draft Hiring" type="object"
+                        class="btn-outline-secondary" invisible="not is_contract_employee or hiring_approval_state not in ('rejected', 'approved')"/>
+            </xpath>
+
+            <!-- Alert banner for Contract Employee GM Hiring Status -->
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning mb-0" role="alert"
+                     invisible="not is_contract_employee or hiring_approval_state != 'waiting_gm'">
+                    <strong>Hiring Approval Pending: </strong>
+                    <span>This is a contract employee. General Manager (GM) approval is required before hiring is completed.</span>
+                </div>
+                <div class="alert alert-danger mb-0" role="alert"
+                     invisible="not is_contract_employee or hiring_approval_state != 'rejected'">
+                    <strong>Hiring Rejected: </strong>
+                    <span>The General Manager (GM) has rejected the hiring of this contract employee.</span>
+                </div>
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not is_project_contract or project_completion_state != 'approaching_completion'">
+                    <strong>Project &amp; Contract Notice: </strong>
+                    <span>The assigned project or employee contract is approaching completion. Please review the project end date and either renew the contract or initiate offboarding.</span>
+                </div>
+                <div class="alert alert-danger mb-0" role="alert"
+                     invisible="not is_project_contract or project_completion_state != 'project_completed'">
+                    <strong>Project Completed: </strong>
+                    <span>The project has reached its end date. Verify project completion and proceed with contract renewal or employee offboarding.</span>
+                </div>
+            </xpath>
+
+            <!-- Contract Overview enhancements inside Payroll tab -->
+            <xpath expr="//group[@name='contract']//separator[@name='schedule']" position="before">
+                <!-- 1. Contract Employee & GM Hiring Approval Section -->
+                <separator string="Hiring &amp; GM Approval" name="hiring_approval_separator"/>
+                <field name="is_contract_employee" widget="boolean_toggle"/>
+                <field name="hiring_approval_state" invisible="not is_contract_employee" widget="badge"
+                       decoration-info="hiring_approval_state == 'draft'"
+                       decoration-warning="hiring_approval_state == 'waiting_gm'"
+                       decoration-success="hiring_approval_state == 'approved'"
+                       decoration-danger="hiring_approval_state == 'rejected'"/>
+                <field name="gm_approved_by_id" invisible="not is_contract_employee or hiring_approval_state != 'approved'"/>
+                <field name="gm_approval_date" invisible="not is_contract_employee or hiring_approval_state != 'approved'"/>
+
+                <!-- 2. Project Contract Section -->
+                <separator string="Project Contract Details" name="project_contract_separator"/>
+                <field name="is_project_contract" widget="boolean_toggle"/>
+                <field name="contract_project_id" invisible="not is_project_contract" placeholder="Select Project..." options="{'no_create': True}"/>
+                <field name="project_section" invisible="not is_project_contract" placeholder="e.g. Foundation, Finishing, Civil Works, Site A..."/>
+                <field name="project_end_date" invisible="not is_project_contract"/>
+                <field name="project_completion_state" invisible="not is_project_contract" widget="badge"
+                       decoration-success="project_completion_state == 'ongoing'"
+                       decoration-warning="project_completion_state == 'approaching_completion'"
+                       decoration-danger="project_completion_state == 'project_completed'"/>
+
+                <!-- Project Contract End Action: Renew vs Offboarding -->
+                <label for="contract_expiry_action" string="Contract End / Departure Action" invisible="not is_project_contract"/>
+                <div class="o_row" invisible="not is_project_contract">
+                    <field name="contract_expiry_action" class="o_hr_narrow_field"/>
+                    <button name="action_decide_renew" type="object" string="Renew Contract"
+                            class="btn-outline-primary btn-sm ms-2" icon="fa-refresh"/>
+                    <button name="action_start_offboarding" type="object" string="Start Offboarding"
+                            class="btn-outline-danger btn-sm ms-1" icon="fa-sign-out"/>
+                </div>
+
+                <!-- 3. Probation Period Section -->
+                <separator string="Probation Period" name="probation_separator"/>
+                <field name="has_probation" widget="boolean_toggle"/>
+                
+                <field name="probation_status" invisible="not has_probation" widget="badge"
+                       decoration-info="probation_status == 'in_progress'"
+                       decoration-success="probation_status == 'passed'"
+                       decoration-warning="probation_status == 'extended'"
+                       decoration-danger="probation_status == 'failed'"/>
+
+                <field name="probation_duration" invisible="not has_probation"/>
+
+                <label for="probation_date_start" string="Probation Dates" invisible="not has_probation"/>
+                <div class="o_row" name="probation_dates_row" invisible="not has_probation">
+                    <field name="probation_date_start" placeholder="Start Date" class="o_hr_narrow_field me-2"/>
+                    <span>to</span>
+                    <field name="probation_date_end" placeholder="End Date" class="o_hr_narrow_field ms-2"/>
+                </div>
+
+                <div class="o_row my-1" colspan="2" invisible="not has_probation">
+                    <button name="action_probation_pass" type="object" string="Pass / Confirm"
+                            class="btn-success btn-sm me-1" invisible="probation_status == 'passed'"/>
+                    <button name="action_probation_extend" type="object" string="Extend"
+                            class="btn-outline-warning btn-sm me-1" invisible="probation_status == 'extended'"/>
+                    <button name="action_probation_fail" type="object" string="Terminate / Failed"
+                            class="btn-outline-danger btn-sm me-1" invisible="probation_status == 'failed'"/>
+                    <button name="action_probation_reset" type="object" string="Reset to Under Probation"
+                            class="btn-outline-secondary btn-sm" invisible="probation_status == 'in_progress'"/>
+                </div>
+
+                <field name="probation_notes" invisible="not has_probation" placeholder="Probation evaluation, milestones, or notes..."/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
